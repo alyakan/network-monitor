@@ -93,3 +93,25 @@ enum SystemProxy {
         _ = ShellCommand.runSync(networksetup, ["-setsecurewebproxystate", service, "off"])
     }
 }
+
+enum AndroidTools {
+    static var adbPath: String? {
+        var candidates: [String] = []
+        for variable in ["ANDROID_HOME", "ANDROID_SDK_ROOT"] {
+            if let sdk = ProcessInfo.processInfo.environment[variable] {
+                candidates.append("\(sdk)/platform-tools/adb")
+            }
+        }
+        candidates.append(NSHomeDirectory() + "/Library/Android/sdk/platform-tools/adb")
+        candidates.append("/opt/homebrew/bin/adb")
+        candidates.append("/usr/local/bin/adb")
+        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    static func pushCertificate(at url: URL) async -> ShellCommand.Result {
+        guard let adb = adbPath else {
+            return ShellCommand.Result(status: -1, output: "adb not found. Install Android platform-tools or set ANDROID_HOME.")
+        }
+        return await ShellCommand.run(adb, ["push", url.path, "/sdcard/Download/NetworkMonitor-CA.crt"])
+    }
+}

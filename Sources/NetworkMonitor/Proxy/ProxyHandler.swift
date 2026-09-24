@@ -316,10 +316,17 @@ enum SetupPage {
     <h1>Network Monitor</h1>
     <p>The proxy is running. Install its root certificate to inspect HTTPS traffic.</p>
     <p><a class="btn" href="/ca">Download CA certificate</a></p>
+    <h2>iOS</h2>
     <ol>
     <li>Tap the button and allow the profile download.</li>
     <li>Settings &rarr; General &rarr; VPN &amp; Device Management &rarr; install “Network Monitor Root CA”.</li>
     <li>Settings &rarr; General &rarr; About &rarr; Certificate Trust Settings &rarr; enable full trust.</li>
+    </ol>
+    <h2>Android</h2>
+    <ol>
+    <li>Tap the button; Chrome saves the file to Downloads.</li>
+    <li>Settings &rarr; Security &rarr; Encryption &amp; credentials &rarr; Install a certificate &rarr; CA certificate &rarr; pick the downloaded file.</li>
+    <li>Apps only trust user CAs if their debug network security config allows it.</li>
     </ol>
     </body></html>
     """

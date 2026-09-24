@@ -12,6 +12,8 @@ struct SetupView: View {
             Divider()
             simulatorSection
             Divider()
+            androidSection
+            Divider()
             certificateSection
             if let message = model.setupMessage {
                 Text(message)
@@ -70,6 +72,17 @@ struct SetupView: View {
                 .disabled(!model.isRunning && !model.isSystemProxyEnabled)
             }
             .controlSize(.small)
+        }
+    }
+
+    private var androidSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Android").font(.headline)
+            step(1, "Wi‑Fi → network → Proxy: Manual with the address above. Emulator: use 10.0.2.2:\(model.port).")
+            step(2, "Push the certificate below, then Settings → Security → Encryption & credentials → Install a certificate → CA certificate.")
+            step(3, "Apps ignore user CAs unless their debug network security config trusts them. See the README.")
+            Button("Push certificate to connected device (adb)", action: model.pushCertificateToAndroidDevice)
+                .controlSize(.small)
         }
     }
 

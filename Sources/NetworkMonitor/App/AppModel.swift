@@ -122,6 +122,17 @@ final class AppModel {
         }
     }
 
+    func pushCertificateToAndroidDevice() {
+        guard let authority else { return }
+        setupMessage = "Pushing via adb…"
+        Task {
+            let result = await AndroidTools.pushCertificate(at: authority.certificateURL)
+            setupMessage = result.succeeded
+                ? "Copied to Download/NetworkMonitor-CA.crt. Install it: Settings → Security → Encryption & credentials → Install a certificate → CA certificate."
+                : "adb failed: \(result.output)"
+        }
+    }
+
     func setSystemProxy(enabled: Bool) async {
         let result = enabled ? await SystemProxy.enable(port: port) : await SystemProxy.disable()
         if result.succeeded {
