@@ -7,7 +7,7 @@
     <key>CFBundleDisplayName</key>
     <string>Network Monitor</string>
     <key>CFBundleIdentifier</key>
-    <string>com.lumiform.dev.network-monitor</string>
+    <string>dev.alyakan.network-monitor</string>
     <key>CFBundleExecutable</key>
     <string>NetworkMonitor</string>
     <key>CFBundlePackageType</key>

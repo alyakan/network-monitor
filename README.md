@@ -1,6 +1,6 @@
 # Network Monitor
 
-Minimal macOS HTTP/HTTPS proxy for watching what the Lumiform iOS app sends during development. Swift + SwiftUI, no configuration files.
+Minimal macOS HTTP/HTTPS proxy for watching what an iOS app sends during development, from the simulator or a real device. Swift + SwiftUI, no configuration files.
 
 ## Run
 

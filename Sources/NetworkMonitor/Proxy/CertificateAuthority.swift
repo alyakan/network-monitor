@@ -75,7 +75,7 @@ final class CertificateAuthority: @unchecked Sendable {
     private static func makeRootCertificate(key: Certificate.PrivateKey) throws -> Certificate {
         let name = try DistinguishedName {
             CommonName("Network Monitor Root CA")
-            OrganizationName("Lumiform Dev")
+            OrganizationName("Network Monitor")
         }
         let now = Date()
         let extensions = try Certificate.Extensions {
