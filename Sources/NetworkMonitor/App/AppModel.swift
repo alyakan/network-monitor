@@ -6,6 +6,7 @@ import Observation
 @Observable
 final class AppModel {
     private static let portKey = "proxyPort"
+    private static let guideSeenKey = "hasSeenGuide"
     private static let maxTransactions = 5000
 
     private(set) var transactions: [Transaction] = []
@@ -19,6 +20,7 @@ final class AppModel {
     private(set) var errorMessage: String?
     private(set) var setupMessage: String?
     private(set) var isSystemProxyEnabled = false
+    var isShowingGuide = false
 
     let authority: CertificateAuthority?
     let localAddresses: [String]
@@ -29,6 +31,7 @@ final class AppModel {
         let storedPort = UserDefaults.standard.integer(forKey: Self.portKey)
         port = storedPort > 0 ? storedPort : 8888
         localAddresses = NetworkInterfaces.ipv4Addresses()
+        isShowingGuide = !UserDefaults.standard.bool(forKey: Self.guideSeenKey)
         do {
             authority = try CertificateAuthority()
         } catch {
@@ -110,6 +113,15 @@ final class AppModel {
     }
 
     // MARK: - Setup helpers
+
+    func showGuide() {
+        isShowingGuide = true
+    }
+
+    func dismissGuide() {
+        UserDefaults.standard.set(true, forKey: Self.guideSeenKey)
+        isShowingGuide = false
+    }
 
     func installCertificateInBootedSimulator() {
         guard let authority else { return }

@@ -52,6 +52,30 @@ struct TransactionTable: View {
             .width(70)
         }
         .font(.system(size: 12))
+        .overlay {
+            if model.transactions.isEmpty {
+                emptyState
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "antenna.radiowaves.left.and.right")
+                .font(.system(size: 36))
+                .foregroundStyle(.secondary)
+            Text(model.isRunning ? "Waiting for requests" : "Proxy stopped")
+                .font(.title3)
+            Text(model.isRunning
+                 ? "Point a simulator or device at this Mac on port \(model.port)."
+                 : "Press Start in the toolbar to begin listening.")
+                .foregroundStyle(.secondary)
+            Button("Open Setup Guide", action: model.showGuide)
+                .controlSize(.small)
+        }
+        .padding(.top, 60)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .allowsHitTesting(true)
     }
 }
 

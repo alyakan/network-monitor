@@ -13,6 +13,9 @@ struct ContentView: View {
         }
         .toolbar { toolbarContent }
         .searchable(text: $model.filterText, placement: .toolbar, prompt: "Filter by host, path, method or status")
+        .sheet(isPresented: $model.isShowingGuide) {
+            OnboardingView(model: model, onDismiss: model.dismissGuide)
+        }
     }
 
     // MARK: - Toolbar
