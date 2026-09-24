@@ -2,6 +2,8 @@
 
 Minimal macOS HTTP/HTTPS proxy for watching what a mobile app sends during development, from the iOS simulator, an Android emulator or a real device. Swift + SwiftUI, no configuration files.
 
+<img width="1401" height="854" alt="Screenshot 2026-09-24 at 11 39 27 AM" src="https://github.com/user-attachments/assets/7ca24795-6877-462a-9f5c-16c972fd8e5b" />
+
 ## Run
 
 ```
