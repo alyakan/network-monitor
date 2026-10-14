@@ -28,6 +28,9 @@ final class AppModel {
     let localAddresses: [String]
 
     private var server: ProxyServer?
+    @ObservationIgnored private var api: APIServer?
+    /// Bumped on every append and update (see Transaction.revision).
+    @ObservationIgnored private var revision: UInt64 = 0
 
     init() {
         let storedPort = UserDefaults.standard.integer(forKey: Self.portKey)
@@ -180,6 +183,9 @@ final class AppModel {
     // MARK: - Recording
 
     fileprivate func append(_ transaction: Transaction) {
+        var transaction = transaction
+        revision += 1
+        transaction.revision = revision
         transactions.append(transaction)
         if transactions.count > Self.maxTransactions {
             transactions.removeFirst(transactions.count - Self.maxTransactions)
@@ -189,6 +195,52 @@ final class AppModel {
     fileprivate func update(id: UUID, _ change: (inout Transaction) -> Void) {
         guard let index = transactions.firstIndex(where: { $0.id == id }) else { return }
         change(&transactions[index])
+        revision += 1
+        transactions[index].revision = revision
+    }
+
+    // MARK: - Local API
+
+    /// Starts the loopback API other apps (Lantern) read captured traffic from. It doesn't depend on the proxy:
+    /// it serves whatever has been captured, running or not.
+    func startAPI() {
+        guard api == nil else { return }
+        let api = APIServer(source: APISource(model: self))
+        self.api = api
+        Task {
+            do {
+                try await api.start()
+            } catch {
+                self.api = nil
+                errorMessage = "Could not start the local API: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// The transactions changed after `since`, oldest first; the newest `limit` of them when there are more.
+    func apiTransactions(since: UInt64, limit: Int?) -> (revision: UInt64, transactions: [Transaction]) {
+        var changed = transactions.filter { $0.revision > since }
+        if let limit, changed.count > limit {
+            changed.removeFirst(changed.count - limit)
+        }
+        return (revision, changed)
+    }
+
+    func apiTransaction(id: UUID) -> Transaction? {
+        transactions.first { $0.id == id }
+    }
+}
+
+/// What the API server reads, on the main actor the model lives on.
+struct APISource: Sendable {
+    weak var model: AppModel?
+
+    func list(since: UInt64, limit: Int?) async -> (revision: UInt64, transactions: [Transaction]) {
+        await MainActor.run { model?.apiTransactions(since: since, limit: limit) ?? (0, []) }
+    }
+
+    func transaction(id: UUID) async -> Transaction? {
+        await MainActor.run { model?.apiTransaction(id: id) }
     }
 }
 
