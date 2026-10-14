@@ -12,6 +12,8 @@ final class AppModel {
     private(set) var transactions: [Transaction] = []
     var selectedTransactionID: Transaction.ID?
     var filterText = ""
+    var methodFilter: Set<String> = []
+    var statusFilter: Set<StatusClass> = []
     var port: Int {
         didSet { UserDefaults.standard.set(port, forKey: Self.portKey) }
     }
@@ -51,13 +53,28 @@ final class AppModel {
 
     var filteredTransactions: [Transaction] {
         let needle = filterText.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !needle.isEmpty else { return transactions }
+        guard !needle.isEmpty || !methodFilter.isEmpty || !statusFilter.isEmpty else { return transactions }
         return transactions.filter { transaction in
-            transaction.host.lowercased().contains(needle)
+            if !methodFilter.isEmpty, !methodFilter.contains(transaction.method.uppercased()) { return false }
+            if !statusFilter.isEmpty, !(transaction.statusClass.map(statusFilter.contains) ?? false) { return false }
+            guard !needle.isEmpty else { return true }
+            return transaction.host.lowercased().contains(needle)
                 || transaction.path.lowercased().contains(needle)
                 || transaction.method.lowercased() == needle
                 || transaction.statusCode.map { String($0).hasPrefix(needle) } == true
         }
+    }
+
+    /// Methods seen so far plus any still selected, so a ticked method never vanishes from the menu.
+    var availableMethods: [String] {
+        Set(transactions.map { $0.method.uppercased() }).union(methodFilter).sorted()
+    }
+
+    var hasActiveFilters: Bool { !methodFilter.isEmpty || !statusFilter.isEmpty }
+
+    func clearFilters() {
+        methodFilter = []
+        statusFilter = []
     }
 
     var selectedTransaction: Transaction? {

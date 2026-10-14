@@ -9,8 +9,16 @@ struct TransactionDetailView: View {
         var id: String { rawValue }
     }
 
+    /// Selecting a request re-renders on every proxy event; parsing the body only when this changes keeps large bodies cheap.
+    private struct BodyKey: Hashable {
+        let transactionID: Transaction.ID
+        let side: Side
+        let size: Int
+    }
+
     let transaction: Transaction?
     @State private var side: Side = .response
+    @State private var presentation: BodyPresentation = .empty
 
     var body: some View {
         if let transaction {
@@ -23,14 +31,19 @@ struct TransactionDetailView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .padding(12)
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
+                VSplitView {
+                    ScrollView {
                         headersSection(for: transaction)
-                        bodySection(for: transaction)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 60, idealHeight: 180)
+                    bodySection
+                        .frame(minHeight: 120, maxHeight: .infinity)
                 }
+            }
+            .task(id: BodyKey(transactionID: transaction.id, side: side, size: bodyData(for: transaction).count)) {
+                presentation = BodyPresentation.make(data: bodyData(for: transaction), contentType: contentType(for: transaction))
             }
         } else {
             ContentUnavailableView("No request selected", systemImage: "network", description: Text("Requests appear on the left as the device makes them."))
@@ -50,6 +63,10 @@ struct TransactionDetailView: View {
                     .textSelection(.enabled)
                     .lineLimit(3)
                 Spacer()
+                Button("Copy Response") { copyResponse(transaction) }
+                    .controlSize(.small)
+                    .disabled(transaction.outcome != .completed)
+                    .help("Copy status line, headers and body")
                 Button("Copy as cURL") { copyCURL(transaction) }
                     .controlSize(.small)
             }
@@ -99,13 +116,20 @@ struct TransactionDetailView: View {
         }
     }
 
-    private func bodySection(for transaction: Transaction) -> some View {
-        let data = side == .request ? transaction.requestBody : transaction.responseBody
-        let contentType = side == .request ? transaction.requestContentType : transaction.responseContentType
-        return VStack(alignment: .leading, spacing: 6) {
+    private var bodySection: some View {
+        VStack(alignment: .leading, spacing: 6) {
             sectionTitle("Body", count: nil)
-            BodyView(presentation: BodyPresentation.make(data: data, contentType: contentType))
+                .padding([.horizontal, .top], 12)
+            BodyView(presentation: presentation)
         }
+    }
+
+    private func bodyData(for transaction: Transaction) -> Data {
+        side == .request ? transaction.requestBody : transaction.responseBody
+    }
+
+    private func contentType(for transaction: Transaction) -> String? {
+        side == .request ? transaction.requestContentType : transaction.responseContentType
     }
 
     private func sectionTitle(_ title: String, count: Int?) -> some View {
@@ -129,8 +153,22 @@ struct TransactionDetailView: View {
             parts.append("--data-binary")
             parts.append(shellQuote(body))
         }
+        copyToPasteboard(parts.joined(separator: " "))
+    }
+
+    private func copyResponse(_ transaction: Transaction) {
+        var lines = ["HTTP/1.1 \(transaction.statusCode ?? 0)"]
+        lines += transaction.responseHeaders.map { "\($0.name): \($0.value)" }
+        var text = lines.joined(separator: "\n")
+        if !transaction.responseBody.isEmpty {
+            text += "\n\n" + BodyPresentation.fullText(data: transaction.responseBody, contentType: transaction.responseContentType)
+        }
+        copyToPasteboard(text)
+    }
+
+    private func copyToPasteboard(_ string: String) {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(parts.joined(separator: " "), forType: .string)
+        NSPasteboard.general.setString(string, forType: .string)
     }
 
     private func shellQuote(_ value: String) -> String {
@@ -155,16 +193,26 @@ enum BodyPresentation {
         if type.hasPrefix("image/"), let image = NSImage(data: data) {
             return .image(image)
         }
+        if let string = text(data: data, contentType: type) {
+            return truncate(string)
+        }
+        return .binary(data.count)
+    }
+
+    /// Untruncated text for the clipboard, pretty-printing JSON like the on-screen view.
+    static func fullText(data: Data, contentType: String?) -> String {
+        text(data: data, contentType: contentType?.lowercased() ?? "")
+            ?? "<binary data, \(Int64(data.count).formatted(.byteCount(style: .file)))>"
+    }
+
+    private static func text(data: Data, contentType type: String) -> String? {
         if type.contains("json") || looksLikeJSON(data),
            let object = try? JSONSerialization.jsonObject(with: data),
            let pretty = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .withoutEscapingSlashes]),
            let string = String(data: pretty, encoding: .utf8) {
-            return truncate(string)
+            return string
         }
-        if let string = String(data: data, encoding: .utf8) {
-            return truncate(string)
-        }
-        return .binary(data.count)
+        return String(data: data, encoding: .utf8)
     }
 
     private static func looksLikeJSON(_ data: Data) -> Bool {
@@ -184,24 +232,59 @@ struct BodyView: View {
     var body: some View {
         switch presentation {
         case .empty:
-            Text("Empty").foregroundStyle(.secondary)
+            placeholder(Text("Empty").foregroundStyle(.secondary))
         case .text(let string, let truncated):
             VStack(alignment: .leading, spacing: 6) {
                 if truncated {
                     Text("Showing the first 300 KB").font(.callout).foregroundStyle(.orange)
+                        .padding(.horizontal, 12)
                 }
-                Text(string)
-                    .font(.system(size: 12, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                BodyTextView(text: string)
             }
         case .image(let image):
-            Image(nsImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(maxWidth: 480, maxHeight: 480, alignment: .leading)
+            ScrollView {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 480, maxHeight: 480, alignment: .leading)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         case .binary(let count):
-            Text("Binary data · \(Int64(count).formatted(.byteCount(style: .file)))").foregroundStyle(.secondary)
+            placeholder(Text("Binary data · \(Int64(count).formatted(.byteCount(style: .file)))").foregroundStyle(.secondary))
         }
+    }
+
+    private func placeholder(_ text: some View) -> some View {
+        text
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+/// SwiftUI `Text` lays out its whole string on the main thread, which hangs on bodies of a few hundred KB.
+/// `NSTextView` lays out lazily as you scroll.
+struct BodyTextView: NSViewRepresentable {
+    let text: String
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSTextView.scrollableTextView()
+        scrollView.drawsBackground = false
+        let textView = scrollView.documentView as! NSTextView
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isRichText = false
+        textView.drawsBackground = false
+        textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.textContainerInset = NSSize(width: 8, height: 4)
+        textView.layoutManager?.allowsNonContiguousLayout = true
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        let textView = scrollView.documentView as! NSTextView
+        guard textView.string != text else { return }
+        textView.string = text
+        textView.scrollToBeginningOfDocument(nil)
     }
 }
