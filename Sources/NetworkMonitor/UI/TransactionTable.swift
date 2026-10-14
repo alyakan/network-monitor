@@ -55,8 +55,23 @@ struct TransactionTable: View {
         .overlay {
             if model.transactions.isEmpty {
                 emptyState
+            } else if model.filteredTransactions.isEmpty {
+                noMatchesState
             }
         }
+    }
+
+    private var noMatchesState: some View {
+        VStack(spacing: 10) {
+            Text("No matching requests")
+                .font(.title3)
+            if model.hasActiveFilters {
+                Button("Clear Filters", action: model.clearFilters)
+                    .controlSize(.small)
+            }
+        }
+        .padding(.top, 60)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var emptyState: some View {

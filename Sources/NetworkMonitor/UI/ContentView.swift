@@ -12,7 +12,7 @@ struct ContentView: View {
                 .frame(minWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar { toolbarContent }
-        .searchable(text: $model.filterText, placement: .toolbar, prompt: "Filter by host, path, method or status")
+        .searchable(text: $model.filterText, placement: .toolbar, prompt: "Filter by host or path")
         .sheet(isPresented: $model.isShowingGuide) {
             OnboardingView(model: model, onDismiss: model.dismissGuide)
         }
@@ -38,6 +38,8 @@ struct ContentView: View {
         }
 
         ToolbarItemGroup(placement: .primaryAction) {
+            FilterMenus(model: model)
+
             Button(action: model.clear) {
                 Label("Clear", systemImage: "trash")
             }
