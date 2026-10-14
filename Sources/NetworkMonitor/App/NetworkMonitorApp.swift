@@ -15,6 +15,7 @@ struct NetworkMonitorApp: App {
                 .onAppear {
                     NSApp.activate(ignoringOtherApps: true)
                     model.start()
+                    model.startAPI()
                 }
         }
         .defaultSize(width: 1240, height: 780)

@@ -46,6 +46,13 @@ Press **Start**, then open **Setup** in the toolbar.
 
 The root CA lives in `~/Library/Application Support/NetworkMonitor/`. Deleting the folder regenerates it (devices must then re-trust the new certificate).
 
+## Local API
+
+While the app is open it serves what it has captured on a read-only HTTP API at `127.0.0.1` (never the LAN), for tools like [Lantern](https://github.com/alyakan/lantern). The port and a token are in `~/Library/Application Support/NetworkMonitor/api.json` (readable only by you); send the token as `Authorization: Bearer <token>`.
+
+- `GET /v1/transactions?since=<revision>&limit=<n>`: the requests that changed after `since` (all of them without it), oldest first. The reply's `revision` is the `since` for the next call; a different `instance` means the app restarted.
+- `GET /v1/transactions/<id>`: one request with its headers and bodies. A body is `{"encoding": "utf8" | "base64", "data", "size"}`. Response bodies are already decompressed, even when the headers still say `Content-Encoding: gzip`.
+
 ## Limitations
 
 - Requests and responses are fully buffered; streaming, WebSockets and HTTP/2 to the device are not supported (upstream HTTP/2 is fine).

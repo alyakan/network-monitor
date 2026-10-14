@@ -31,6 +31,8 @@ struct Transaction: Identifiable, Hashable, Sendable {
     var responseBody = Data()
     var duration: TimeInterval?
     var outcome: Outcome = .pending
+    /// The model's change counter when this transaction last changed, so the local API can serve "what changed since".
+    var revision: UInt64 = 0
 
     var requestContentType: String? { requestHeaders.value(for: "Content-Type") }
     var responseContentType: String? { responseHeaders.value(for: "Content-Type") }
